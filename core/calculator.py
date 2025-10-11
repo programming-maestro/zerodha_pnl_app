@@ -7,7 +7,7 @@ from core.constants import (
 from core.utils import validate_inputs, round2
 
 
-def zerodha_intraday_pnl(buy_price: float, sell_price: float, quantity: int, exchange: str = "NSE") -> dict:
+def zerodha_intraday_pnl1(buy_price: float, sell_price: float, quantity: int, exchange: str = "NSE") -> dict:
     """
     Pure function to calculate Zerodha Intraday Equity P&L.
     Returns all computed values in a dictionary.
@@ -61,4 +61,75 @@ def zerodha_intraday_pnl(buy_price: float, sell_price: float, quantity: int, exc
         "Points to Breakeven": round2(points_to_breakeven),
         "Gross P&L": round2(gross_pnl),
         "Net P&L": round2(net_pnl)
+    }
+
+def calculate_turnover(buy_price: float, sell_price: float, quantity: int) -> dict:
+    buy_turnover = buy_price * quantity
+    sell_turnover = sell_price * quantity
+    total_turnover = buy_turnover + sell_turnover
+    return {
+        "buy_turnover": buy_turnover,
+        "sell_turnover": sell_turnover,
+        "total_turnover": total_turnover
+    }
+
+def calculate_brokerage(buy_turnover: float, sell_turnover: float) -> float:
+    brokerage_buy = min(BROKERAGE_CAP, BROKERAGE_RATE * buy_turnover)
+    brokerage_sell = min(BROKERAGE_CAP, BROKERAGE_RATE * sell_turnover)
+    return brokerage_buy + brokerage_sell
+
+def calculate_exchange_txn(total_turnover: float, exchange: str) -> float:
+    if exchange.upper() == "NSE":
+        return NSE_TXN_CHARGE * total_turnover
+    else:
+        return BSE_TXN_CHARGE * total_turnover
+
+def calculate_statutory_charges(buy_turnover: float, sell_turnover: float, total_turnover: float, brokerage: float, exchange_txn: float) -> dict:
+    stt = STT_RATE * sell_turnover
+    sebi = SEBI_CHARGE_RATE * total_turnover
+    stamp_duty = STAMP_DUTY_RATE * buy_turnover
+    gst = GST_RATE * (brokerage + exchange_txn + sebi)
+    total_statutory = stt + sebi + stamp_duty + exchange_txn + gst
+    return {
+        "STT": stt,
+        "SEBI": sebi,
+        "Stamp Duty": stamp_duty,
+        "GST": gst,
+        "Total Statutory Charges": total_statutory
+    }
+
+def calculate_pnl(buy_price: float, sell_price: float, quantity: int, total_charges: float) -> dict:
+    gross_pnl = (sell_price - buy_price) * quantity
+    net_pnl = gross_pnl - total_charges
+    points_to_breakeven = total_charges / quantity
+    return {
+        "Gross P&L": gross_pnl,
+        "Net P&L": net_pnl,
+        "Points to Breakeven": points_to_breakeven
+    }
+
+def zerodha_intraday_pnl(buy_price: float, sell_price: float, quantity: int, exchange: str = "NSE") -> dict:
+    validate_inputs(buy_price, sell_price, quantity, exchange)
+
+    turnovers = calculate_turnover(buy_price, sell_price, quantity)
+    brokerage = calculate_brokerage(turnovers["buy_turnover"], turnovers["sell_turnover"])
+    exchange_txn = calculate_exchange_txn(turnovers["total_turnover"], exchange)
+    statutory_charges = calculate_statutory_charges(
+        turnovers["buy_turnover"], turnovers["sell_turnover"], turnovers["total_turnover"], brokerage, exchange_txn
+    )
+    total_charges = brokerage + statutory_charges["Total Statutory Charges"]
+    pnl = calculate_pnl(buy_price, sell_price, quantity, total_charges)
+
+    return {
+        "Turnover": round2(turnovers["total_turnover"]),
+        "Zerodha Brokerage": round2(brokerage),
+        "Exchange Txn Charges": round2(exchange_txn),
+        "SEBI Charges": round2(statutory_charges["SEBI"]),
+        "Stamp Duty": round2(statutory_charges["Stamp Duty"]),
+        "STT": round2(statutory_charges["STT"]),
+        "GST": round2(statutory_charges["GST"]),
+        "Total Charges": round2(total_charges),
+        "Points to Breakeven": round2(pnl["Points to Breakeven"]),
+        "Gross P&L": round2(pnl["Gross P&L"]),
+        "Net P&L": round2(pnl["Net P&L"])
     }
