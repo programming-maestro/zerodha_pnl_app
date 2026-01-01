@@ -110,7 +110,7 @@ def calculate_pnl(buy_price: float, sell_price: float, quantity: int, total_char
 
 def zerodha_intraday_pnl(buy_price: float, sell_price: float, quantity: int, exchange: str = "NSE") -> dict:
     validate_inputs(buy_price, sell_price, quantity, exchange)
-
+    zerodha_intraday_pnl_report(buy_price, sell_price,quantity,exchange)
     turnovers = calculate_turnover(buy_price, sell_price, quantity)
     brokerage = calculate_brokerage(turnovers["buy_turnover"], turnovers["sell_turnover"])
     exchange_txn = calculate_exchange_txn(turnovers["total_turnover"], exchange)
@@ -133,3 +133,51 @@ def zerodha_intraday_pnl(buy_price: float, sell_price: float, quantity: int, exc
         "Gross P&L": round2(pnl["Gross P&L"]),
         "Net P&L": round2(pnl["Net P&L"])
     }
+
+def zerodha_intraday_pnl_report(buy_price: float, sell_price: float, quantity: int, exchange: str = "NSE") -> None:
+    """
+    Prints a detailed Zerodha intraday P&L report with additional metrics:
+    - Break-even margin % of money invested
+    - Profit % of money invested
+    """
+    validate_inputs(buy_price, sell_price, quantity, exchange)
+
+    # --- Calculations ---
+    invested = buy_price * quantity
+    turnovers = calculate_turnover(buy_price, sell_price, quantity)
+    brokerage = calculate_brokerage(turnovers["buy_turnover"], turnovers["sell_turnover"])
+    exchange_txn = calculate_exchange_txn(turnovers["total_turnover"], exchange)
+    statutory_charges = calculate_statutory_charges(
+        turnovers["buy_turnover"], turnovers["sell_turnover"], turnovers["total_turnover"], brokerage, exchange_txn
+    )
+    total_charges = brokerage + statutory_charges["Total Statutory Charges"]
+    pnl = calculate_pnl(buy_price, sell_price, quantity, total_charges)
+
+    # --- Additional metrics ---
+    break_even_margin_pct = (total_charges / turnovers["buy_turnover"]) * 100
+    profit_pct = (pnl["Net P&L"] / turnovers["buy_turnover"]) * 100
+
+    # --- Report ---
+    print(f"Exchange: {exchange.upper()}")
+    print("-" * 40)
+    print(f"{'Buy Price':25}: {buy_price}")
+    print(f"{'Sell Price':25}: {sell_price}")
+    print(f"{'Invested':25}: {invested}")
+    print("-" * 40)
+    print(f"{'Turnover':25}: {round2(turnovers['total_turnover'])}")
+    print(f"{'Zerodha Brokerage':25}: {round2(brokerage)}")
+    print(f"{'Exchange Txn Charges':25}: {round2(exchange_txn)}")
+    print(f"{'SEBI Charges':25}: {round2(statutory_charges['SEBI'])}")
+    print(f"{'Stamp Duty':25}: {round2(statutory_charges['Stamp Duty'])}")
+    print(f"{'STT':25}: {round2(statutory_charges['STT'])}")
+    print(f"{'GST':25}: {round2(statutory_charges['GST'])}")
+    print("-" * 40)
+    print(f"{'Total Charges':25}: {round2(total_charges)}")
+    print("-" * 40)
+    print(f"{'Points to Breakeven':25}: {round2(pnl['Points to Breakeven'])}")
+    print(f"{'Break-even Margin %':25}: {round2(break_even_margin_pct)}%")
+    print("-" * 40)
+    print(f"{'Gross P&L':25}: {round2(pnl['Gross P&L'])}")
+    print(f"{'Net P&L':25}: {round2(pnl['Net P&L'])}")
+    print(f"{'Profit %':25}: {round2(profit_pct)}%")
+    print("-" * 40)
