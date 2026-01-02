@@ -1,3 +1,4 @@
+import os
 import tkinter as tk
 from tkinter import messagebox
 from ttkbootstrap import (
@@ -196,10 +197,15 @@ class ZerodhaPnLApp:
         )
 
 
+
 def main():
     style = Style("flatly")
     root = style.master
-    ZerodhaPnLApp(root)
+
+    icon_path = os.path.join(os.path.dirname(__file__), "assets", "app.ico")
+    root.iconbitmap(default=icon_path)
+
+    app = ZerodhaPnLApp(root)
     root.mainloop()
 
 

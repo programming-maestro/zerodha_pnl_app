@@ -1,0 +1,100 @@
+# =========================
+# Python
+# =========================
+
+# Byte-compiled / optimized files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# =========================
+# Virtual Environments
+# =========================
+venv/
+.venv/
+env/
+ENV/
+.venv.*
+
+# =========================
+# Packaging / Distribution
+# =========================
+build/
+dist/
+*.egg-info/
+.eggs/
+*.spec
+
+# =========================
+# Testing / Coverage
+# =========================
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache/
+pytest_cache/
+
+# =========================
+# Type Checking
+# =========================
+.mypy_cache/
+.pyre/
+.pytype/
+
+# =========================
+# Jupyter
+# =========================
+.ipynb_checkpoints/
+
+# =========================
+# Logs & Runtime Files
+# =========================
+*.log
+logs/
+*.pid
+
+# =========================
+# Databases & Output
+# =========================
+*.sqlite3
+output/
+*.zip
+
+# =========================
+# Secrets / Local Config
+# =========================
+.venv
+.env
+.env.*
+config.local.py
+settings.local.py
+
+# =========================
+# IDEs & Editors
+# =========================
+
+# PyCharm / IntelliJ
+.idea/
+*.iml
+
+# VS Code
+.vscode/
+
+# =========================
+# OS-Specific Files
+# =========================
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# macOS
+.DS_Store
+
+# Linux / Unix
+*~
