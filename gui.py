@@ -37,7 +37,11 @@ class ZerodhaPnLApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Zerodha Intraday P&L Calculator")
-        self.root.geometry("420x530") # change container length
+         # change container length
+        width = 420
+        height = 530
+
+        center_window(self.root, width, height)
         self.root.resizable(False, False)
 
         self.portfolio = []
@@ -196,18 +200,33 @@ class ZerodhaPnLApp:
             foreground="#1e8449" if total >= 0 else "#c0392b",
         )
 
+def center_window(root, width, height):
+    root.update_idletasks()
 
+    screen_width = root.winfo_screenwidth()
+    screen_height = root.winfo_screenheight()
+
+    x = (screen_width // 2) - (width // 2)
+    y = (screen_height // 2) - (height // 2)
+
+    root.geometry(f"{width}x{height}+{x}+{y}")
 
 def main():
     style = Style("flatly")
     root = style.master
 
+    # Hide window initially (prevents top-left flash)
+    root.withdraw()
+
     icon_path = os.path.join(os.path.dirname(__file__), "assets", "app.ico")
     root.iconbitmap(default=icon_path)
 
     app = ZerodhaPnLApp(root)
-    root.mainloop()
 
+    # Show window AFTER geometry is finalized
+    root.deiconify()
+
+    root.mainloop()
 
 if __name__ == "__main__":
     main()
