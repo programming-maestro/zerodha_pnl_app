@@ -1,4 +1,5 @@
 import os
+import json
 import tkinter as tk
 from tkinter import messagebox
 from ttkbootstrap import (
@@ -14,7 +15,13 @@ from ttkbootstrap import (
 from core.calculator import zerodha_intraday_pnl
 
 
-# ---------- Helpers ----------
+# ================= Configuration =================
+STATE_FILE = "window_state.json"
+WINDOW_WIDTH = 420
+WINDOW_HEIGHT = 530
+
+
+# ================= Helpers =================
 def format_inr(value: float) -> str:
     neg = value < 0
     value = int(round(abs(value)))
@@ -33,16 +40,55 @@ def format_inr(value: float) -> str:
     return f"-₹ {s}" if neg else f"₹ {s}"
 
 
+def center_window(root, width, height):
+    root.update_idletasks()
+    screen_width = root.winfo_screenwidth()
+    screen_height = root.winfo_screenheight()
+
+    x = (screen_width - width) // 2
+    y = (screen_height - height) // 2
+
+    root.geometry(f"{width}x{height}+{x}+{y}")
+
+
+def load_window_position():
+    if not os.path.exists(STATE_FILE):
+        return None
+    try:
+        with open(STATE_FILE, "r") as f:
+            return json.load(f)
+    except Exception:
+        return None
+
+
+def save_window_position(root):
+    try:
+        state = {
+            "x": root.winfo_x(),
+            "y": root.winfo_y(),
+        }
+        with open(STATE_FILE, "w") as f:
+            json.dump(state, f)
+    except Exception:
+        pass
+
+
+# ================= Main App =================
 class ZerodhaPnLApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Zerodha Intraday P&L Calculator")
-         # change container length
-        width = 420
-        height = 530
 
-        center_window(self.root, width, height)
+        last_pos = load_window_position()
+        if last_pos:
+            self.root.geometry(
+                f"{WINDOW_WIDTH}x{WINDOW_HEIGHT}+{last_pos['x']}+{last_pos['y']}"
+            )
+        else:
+            center_window(self.root, WINDOW_WIDTH, WINDOW_HEIGHT)
+
         self.root.resizable(False, False)
+        self.root.protocol("WM_DELETE_WINDOW", self.on_close)
 
         self.portfolio = []
 
@@ -51,31 +97,36 @@ class ZerodhaPnLApp:
 
     # ================= Background =================
     def _build_background(self):
-        canvas = tk.Canvas(self.root, width=420, height=530, highlightthickness=0) # change container length
+        canvas = tk.Canvas(
+            self.root,
+            width=WINDOW_WIDTH,
+            height=WINDOW_HEIGHT,
+            highlightthickness=0,
+        )
         canvas.place(x=0, y=0)
 
         r1, g1, b1 = self.root.winfo_rgb("#0f2027")
         r2, g2, b2 = self.root.winfo_rgb("#2c5364")
 
-        for i in range(680):
-            r = int(r1 + (r2 - r1) * i / 530)
-            g = int(g1 + (g2 - g1) * i / 530)
-            b = int(b1 + (b2 - b1) * i / 530)
+        for i in range(WINDOW_HEIGHT):
+            r = int(r1 + (r2 - r1) * i / WINDOW_HEIGHT)
+            g = int(g1 + (g2 - g1) * i / WINDOW_HEIGHT)
+            b = int(b1 + (b2 - b1) * i / WINDOW_HEIGHT)
             color = f"#{r//256:02x}{g//256:02x}{b//256:02x}"
-            canvas.create_line(0, i, 420, i, fill=color)
+            canvas.create_line(0, i, WINDOW_WIDTH, i, fill=color)
 
     # ================= UI =================
     def _build_ui(self):
         panel = Frame(self.root, padding=12, bootstyle="light")
-        panel.place(x=10, y=10, width=400, height=510) # change cantainer length
+        panel.place(x=10, y=10, width=400, height=510)
 
-        # ---------- Net P&L ----------
         Label(
             panel,
             text="Net P&L",
             font=("Segoe UI Semibold", 20),
             foreground="#2c5877",
         ).pack()
+
         self.pnl_value = Label(
             panel,
             text="₹ 0",
@@ -84,7 +135,6 @@ class ZerodhaPnLApp:
         )
         self.pnl_value.pack(pady=(0, 4))
 
-        # ---------- Inputs ----------
         form = Frame(panel, padding=6)
         form.pack(fill="x")
 
@@ -99,7 +149,6 @@ class ZerodhaPnLApp:
 
         form.columnconfigure(1, weight=1)
 
-        # ---------- Buttons (NO GAP) ----------
         btns = Frame(panel)
         btns.pack(fill="x")
 
@@ -110,12 +159,11 @@ class ZerodhaPnLApp:
         Button(btns, text="Reset", bootstyle="secondary", command=self.reset)\
             .pack(side="left", expand=True, padx=2)
 
-        # ---------- Results (FIXED, NO SCROLL) ----------
         self.table = Treeview(
             panel,
             columns=("Metric", "Value"),
             show="headings",
-            height=12,   # key change
+            height=12,
         )
         self.table.heading("Metric", text="Metric")
         self.table.heading("Value", text="Value")
@@ -123,22 +171,12 @@ class ZerodhaPnLApp:
         self.table.column("Value", width=130, anchor="e")
         self.table.pack(pady=(2, 2))
 
-        # ---------- Portfolio ----------
-
         self.portfolio_label = Label(
             panel,
             text="Portfolio Net P&L",
             font=("Segoe UI Semibold", 15),
             foreground="#3b6a8f",
         )
-
-        self.portfolio_value = Label(
-            panel,
-            text="₹ 0",
-            font=("Segoe UI", 18, "bold"),
-            foreground="#2c3e50",
-        )
-
         self.portfolio_label.pack(pady=(2, 0))
 
     def _field(self, parent, label, row):
@@ -172,7 +210,6 @@ class ZerodhaPnLApp:
         self.portfolio.clear()
         self._render_portfolio()
 
-    # ================= Rendering =================
     def _calc(self):
         return zerodha_intraday_pnl(
             float(self.buy_entry.get()),
@@ -200,33 +237,26 @@ class ZerodhaPnLApp:
             foreground="#1e8449" if total >= 0 else "#c0392b",
         )
 
-def center_window(root, width, height):
-    root.update_idletasks()
+    def on_close(self):
+        save_window_position(self.root)
+        self.root.destroy()
 
-    screen_width = root.winfo_screenwidth()
-    screen_height = root.winfo_screenheight()
 
-    x = (screen_width // 2) - (width // 2)
-    y = (screen_height // 2) - (height // 2)
-
-    root.geometry(f"{width}x{height}+{x}+{y}")
-
+# ================= Entry Point =================
 def main():
     style = Style("flatly")
     root = style.master
 
-    # Hide window initially (prevents top-left flash)
     root.withdraw()
 
     icon_path = os.path.join(os.path.dirname(__file__), "assets", "app.ico")
     root.iconbitmap(default=icon_path)
 
-    app = ZerodhaPnLApp(root)
+    ZerodhaPnLApp(root)
 
-    # Show window AFTER geometry is finalized
     root.deiconify()
-
     root.mainloop()
+
 
 if __name__ == "__main__":
     main()
